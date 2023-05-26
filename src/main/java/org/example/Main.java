@@ -41,18 +41,26 @@ package org.example;
  * Программа должна сопоставить максимально похожие строки из первого множества со строками из второго множества (одна к одной) и вывести результат в файл output.txt.
  * */
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 public class Main {
 
     public static void main(String[] args) {
-
         Main main = new Main();
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Приветствую! Введите полный путь файла источника:");
+        String sourceFile = scanner.nextLine();
+        System.out.println("Введите полный путь файла источника:");
+        String destFile = scanner.nextLine();
+        main.run(sourceFile, destFile);
+        System.out.println("Готово!");
+    }
 
-        try (BufferedReader reader = new BufferedReader(new FileReader("C:\\Users\\qqMik\\Documents\\test.txt"))) {
+    //чтение и запись результата
+    private void run(String sourceFilePath, String destFileName) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(sourceFilePath));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(destFileName))) {
             int n = Integer.parseInt(reader.readLine());
             List<String> firstList = new ArrayList<>();
             for (int i = 0; i < n; i++) {
@@ -63,47 +71,55 @@ public class Main {
             for (int i = 0; i < m; i++) {
                 secondList.add(reader.readLine());
             }
-            Map<String, String> resultMap = main.getResultMap(firstList, secondList);
-            for (Map.Entry<String, String> stringStringEntry : resultMap.entrySet()) {
-                System.out.println(stringStringEntry.getKey() + " " + stringStringEntry.getValue());
+            Map<String, String> resultMap = getResultMap(firstList, secondList);
+            if (firstList.size() >= secondList.size()) {
+                for (String first : firstList) {
+                    if (resultMap.containsKey(first)) {
+                        writer.write(first + ":" + resultMap.get(first) + "\n");
+                    } else {
+                        writer.write(first + ":?" + "\n");
+                    }
+                }
+            } else {
+                for (String second : secondList) {
+                    if (resultMap.containsKey(second)) {
+                        writer.write(second + ":" + resultMap.get(second) + "\n");
+                    } else {
+                        writer.write("?:" + second + "\n");
+                    }
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
     }
 
     // Поиск наиболее похожих строк между списками
     private Map<String, String> getResultMap(List<String> firstList, List<String> secondList) {
-        Map<String, String> resultMap = new HashMap<>();
-        Iterator<String> iterator = firstList.iterator();
-        List<Double> similarityCoefficientList = new ArrayList<>();
-        while (iterator.hasNext()) {
-            String sourceString = iterator.next();
-            List<Double> wordSimilarityCoefficientList = findWordSimilarityCoefficientList(sourceString, secondList);
-            similarityCoefficientList.addAll(wordSimilarityCoefficientList);
+        HashMap<String, String> resultMap = new HashMap<>();
+        boolean swap = false;
+        if (firstList.size() > secondList.size()) {
+            List<String> buffer = new ArrayList<>(firstList);
+            firstList.clear();
+            firstList.addAll(secondList);
+            secondList.clear();
+            secondList.addAll(buffer);
+            swap = true;
         }
-        int firstSize = firstList.size();
-        int secondSize = secondList.size();
-        for (int i = 0; i < firstSize; i++) {
-            List<Double> words = new ArrayList<>();
-            for (int j = 0; j < secondSize; j++) {
-                words.add(similarityCoefficientList.get(j * secondSize + i));
+        for (String sourceString : firstList) {
+            String findWord = findWord(sourceString, secondList);
+            if (!swap) {
+                resultMap.put(findWord, sourceString);
+            } else {
+                resultMap.put(sourceString, findWord);
             }
-            Optional<Double> max = words.stream().max(Comparator.comparingDouble(a -> a));
-            int index = similarityCoefficientList.indexOf(max.get());
-            int firstWord = index / secondSize;
-            int secondWord = index % secondSize;
-            System.out.println(firstWord + " " + secondWord);
-            resultMap.put(firstList.get(firstWord), secondList.get(secondWord));
         }
-        System.out.println(resultMap);
         return resultMap;
     }
 
-    // Расчет коэффициента подобия и возврат листа коэффициентов подобия слова/словосочетания 1 списка ко всему второму
-    public List<Double> findWordSimilarityCoefficientList(String dataString, List<String> checkList) {
-        List<Double> result = new ArrayList<>();
+    // Расчет коэффициента подобия и возврат наиболее подходящей строки
+    private String findWord(String dataString, List<String> checkList) {
+        Map<String, Double> resultMap = new HashMap<>();
         for (String checkString : checkList) {
             boolean[][] collisions = new boolean[dataString.length()][checkString.length()];
             for (int i = 0; i < collisions.length; i++) {
@@ -133,9 +149,10 @@ public class Main {
                     .sum();
             int wordLength = dataString.length() * dataString.length();
             double collisionCoefficient = 0.9 * Math.pow((double) countSum / wordLength, 1.0 / 2);
-            result.add(collisionCoefficient);
+            resultMap.put(checkString, collisionCoefficient);
         }
-        return result;
+        Optional<Map.Entry<String, Double>> max = resultMap.entrySet().stream().max(Comparator.comparingDouble(Map.Entry::getValue));
+        return max.get().getKey();
     }
 
     //получение списка значений пересечений по диагоналям
