@@ -72,7 +72,7 @@ public class Main {
                 secondList.add(reader.readLine());
             }
             Map<String, String> resultMap = getResultMap(firstList, secondList);
-            if (firstList.size() >= secondList.size()) {
+            if (firstList.size() > secondList.size()) {
                 for (String first : firstList) {
                     if (resultMap.containsKey(first)) {
                         writer.write(first + ":" + resultMap.get(first) + "\n");
